@@ -1,0 +1,81 @@
+<!-- 
+  WEBFLOW EMBED — Chladni Sticky Scroll Section
+  ───────────────────────────────────────────────
+  Paste this into a Webflow Embed block.
+  The wrapper is 300vh tall. The canvas is sticky.
+  Every 100vh of scroll fires a new random Chladni pattern.
+
+  IMPORTANT: Replace the src URL below with your actual
+  GitHub Pages / raw hosted URL for chladni-embed.html
+-->
+
+<style>
+  .chladni-scroll-section {
+    position: relative;
+    height: 300vh;
+    width: 100%;
+  }
+
+  .chladni-sticky-wrap {
+    position: sticky;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100vh;
+    overflow: hidden;
+  }
+
+  .chladni-sticky-wrap iframe {
+    width: 100%;
+    height: 100%;
+    border: none;
+    display: block;
+    background: #1e1e1e;
+  }
+</style>
+
+<div class="chladni-scroll-section" id="chladni-section">
+  <div class="chladni-sticky-wrap">
+    <iframe
+      id="chladni-frame"
+      src="YOUR_GITHUB_PAGES_URL_HERE/chladni-embed.html"
+      title="Chladni pattern visualisation"
+      scrolling="no"
+      loading="lazy"
+    ></iframe>
+  </div>
+</div>
+
+<script>
+(function () {
+  var section   = document.getElementById('chladni-section');
+  var frame     = document.getElementById('chladni-frame');
+  var lastBucket = -1;
+  var hasEntered = false;
+
+  function getBucket() {
+    var rect   = section.getBoundingClientRect();
+    var scrolled = -rect.top;           // px scrolled past section top
+    if (scrolled < 0) return -1;        // not yet in view
+    return Math.floor(scrolled / window.innerHeight);
+  }
+
+  function onScroll() {
+    var bucket = getBucket();
+    if (bucket < 0) { hasEntered = false; return; }
+
+    // Fire on first entry AND each new 100vh bucket
+    if (!hasEntered || bucket !== lastBucket) {
+      hasEntered  = true;
+      lastBucket  = bucket;
+      try {
+        frame.contentWindow.postMessage('randomise', '*');
+      } catch (e) {}
+    }
+  }
+
+  window.addEventListener('scroll', onScroll, { passive: true });
+  // Check initial position (e.g. page load mid-scroll)
+  onScroll();
+})();
+</script>
