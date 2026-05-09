@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en-US">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Chladni</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { width: 100%; height: 100%; overflow: hidden; background: #1e1e1e; }
+    canvas { display: block; }
+  </style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<script>
+  var P = { m:8, n:4, a:1, b:1, v:0.02, num:10000 };
+
+  function randInt(a, b)   { return Math.floor(Math.random() * (b - a + 1)) + a; }
+  function randChoice(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
+  var aVals = [-2, -1, 1, 2];
+
+  function randomise() {
+    P.m = randInt(1, 16);
+    P.n = randInt(1, 16);
+    P.a = randChoice(aVals);
+    P.b = randChoice(aVals);
+  }
+
+  // ── canvas ───────────────────────────────────────────────────────────────
+  var canvas = document.getElementById('c');
+  var ctx    = canvas.getContext('2d');
+  var dpr    = Math.min(window.devicePixelRatio || 1, 2);
+
+  function resize() {
+    canvas.width  = window.innerWidth  * dpr;
+    canvas.height = window.innerHeight * dpr;
+    canvas.style.width  = window.innerWidth  + 'px';
+    canvas.style.height = window.innerHeight + 'px';
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.scale(dpr, dpr);
+  }
+  resize();
+  window.addEventListener('resize', resize);
+
+  // ── Chladni equation ─────────────────────────────────────────────────────
+  var PI  = Math.PI;
+  var MIN = 0.002;
+
+  function chladni(x, y) {
+    return P.a * Math.sin(PI * P.n * x) * Math.sin(PI * P.m * y)
+         + P.b * Math.sin(PI * P.m * x) * Math.sin(PI * P.n * y);
+  }
+
+  // ── particles ─────────────────────────────────────────────────────────────
+  var NUM = 10000;
+  var px  = new Float32Array(NUM);
+  var py  = new Float32Array(NUM);
+  for (var i = 0; i < NUM; i++) {
+    px[i] = 0.05 + Math.random() * 0.9;
+    py[i] = 0.05 + Math.random() * 0.9;
+  }
+
+  // ── draw loop ─────────────────────────────────────────────────────────────
+  var isActive = false;
+  var lastTime = 0;
+  var FRAME_MS = 1000 / 30;
+
+  function draw(ts) {
+    requestAnimationFrame(draw);
+    if (!isActive) return;
+    if (ts - lastTime < FRAME_MS) return;
+    lastTime = ts;
+
+    var W = window.innerWidth;
+    var H = window.innerHeight;
+
+    ctx.fillStyle = 'rgb(30,30,30)';
+    ctx.fillRect(0, 0, W, H);
+    ctx.fillStyle = 'rgba(255,255,255,0.85)';
+    ctx.beginPath();
+
+    for (var i = 0; i < NUM; i++) {
+      var x   = px[i];
+      var y   = py[i];
+      var eq  = chladni(x, y);
+      var amp = P.v * Math.abs(eq);
+      if (amp < MIN) amp = MIN;
+
+      x += (Math.random() * 2 - 1) * amp;
+      y += (Math.random() * 2 - 1) * amp;
+
+      if (x < 0) x = -x;
+      if (x > 1) x = 2 - x;
+      if (y < 0) y = -y;
+      if (y > 1) y = 2 - y;
+      if (x < 0) x = 0;
+      if (x > 1) x = 1;
+      if (y < 0) y = 0;
+      if (y > 1) y = 1;
+
+      px[i] = x;
+      py[i] = y;
+      ctx.rect(x * W, y * H, 1.2, 1.2);
+    }
+    ctx.fill();
+  }
+
+  requestAnimationFrame(draw);
+
+  // ── postMessage listener (from Webflow parent page) ───────────────────────
+  var lastBucket = -1;
+
+  window.addEventListener('message', function (e) {
+    var d = e.data;
+    if (!d || typeof d !== 'object' || d.type !== 'chladni') return;
+
+    if (d.action === 'activate') {
+      isActive = true;
+    }
+    if (d.action === 'deactivate') {
+      isActive = false;
+    }
+    if (d.action === 'bucket' && d.n !== lastBucket) {
+      lastBucket = d.n;
+      randomise();
+    }
+  });
+</script>
+</body>
+</html>
